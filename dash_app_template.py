@@ -37,46 +37,46 @@ def fetch_data(q):
     #return data
 
 
-def get_divisions():
-    divisions_query = (
+def get_league():
+    league_query = (
         """
         SELECT DISTINCT division
         FROM results
         """
     )
-    divisions = fetch_data(divisions_query)
-    divisions = list(divisions['division'].sort_values(ascending=True))
-    return divisions
+    leagues = fetch_data(league_query)
+    leagues = list(leagues['division'].sort_values(ascending=True))
+    return leagues
 
 
-def get_seasons(division):
-    seasons_query = (
+def get_year(league):
+    year_query = (
         """SELECT DISTINCT season
         FROM results
         WHERE division='{0}'
-        """.format(division)
+        """.format(league)
     )
-    seasons = fetch_data(seasons_query)
-    seasons = list(seasons['season'].sort_values(ascending=True))
-    return seasons
+    years = fetch_data(year_query)
+    years = list(years['season'].sort_values(ascending=True))
+    return years
 
 
-def get_teams(division, season):
-    teams_query = (
+def get_players(league, year):
+    players_query = (
         """
         SELECT DISTINCT team
         FROM results
         WHERE division='{0}'
         AND season='{1}'
-        """.format(division, season)
+        """.format(league, year)
     )
 
-    teams = fetch_data(teams_query)
-    teams = list(teams['team'].sort_values(ascending=True))
-    return teams
+    players = fetch_data(players_query)
+    players = list(players['team'].sort_values(ascending=True))
+    return players
 
 
-def get_match_results(division, season, team):
+def get_match_results(league, year, player):
     results_query = (
         """
         SELECT date, team, opponent, goals, goals_opp, result, points
@@ -85,13 +85,13 @@ def get_match_results(division, season, team):
         AND season='{1}'
         AND team='{2}'
         ORDER BY date ASC
-        """.format(division, season, team)
+        """.format(league, year, player)
     )
     match_results = fetch_data(results_query)
     return match_results
 
 
-def calculate_season_summary(results):
+def calculate_year_summary(results):
     record = results.groupby(by=['result'])['team'].count()
     summary = pd.DataFrame(
         data={
@@ -106,7 +106,7 @@ def calculate_season_summary(results):
     return summary
 
 
-def draw_season_points_graph(results):
+def draw_year_points_graph(results):
     dates = results['date']
     points = results['points'].cumsum()
 
@@ -125,22 +125,6 @@ def draw_season_points_graph(results):
 # Dashboard Layout / View
 #########################
 
-# Set up Dashboard and create layout
-app = dash.Dash()
-app.css.append_css({
-    "external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
-})
-
-app.layout = html.Div([
-
-    # Page Header
-    html.Div([
-        html.H1('Project Header')
-    ]),
-
-])
-
-
 def generate_table(dataframe, max_rows=10):
     return html.Table(
         # Header
@@ -153,12 +137,12 @@ def generate_table(dataframe, max_rows=10):
     )
 
 
-def onLoad_division_options():
-    division_options = (
-        [{'table': division, 'value': division}
-         for division in get_divisions()]
+def onLoad_league_options():
+    league_options = (
+        [{'table': league, 'value': league}
+         for league in get_league()]
     )
-    return division_options
+    return league_options
 
 
 # Set up dashboard and create Layout
@@ -170,28 +154,28 @@ app.css.append_css({
 app.layout = html.Div([
     # Page Header
     html.Div([
-        html.H1('Soccer results Viewer')
+        html.H1('Tabletennis results Viewer')
     ]),
 
     # dropdown Grid
     html.Div([
         html.Div([
-            # Select Division
+            # Select League
             html.Div([
-                html.Div('Select Division', className='three columns'),
-                html.Div(dcc.Dropdown(id='division-selector', options=onLoad_division_options()),
+                html.Div('Select League', className='three columns'),
+                html.Div(dcc.Dropdown(id='division-selector', options=onLoad_league_options()),
                          className='nine columns')
             ]),
 
-            # Select Season
+            # Select Year
             html.Div([
-                html.Div('Select Season', className='three columns'),
+                html.Div('Select Year', className='three columns'),
                 html.Div(dcc.Dropdown(id='season-selector'), className='nine columns')
             ]),
 
-            # Select Team
+            # Select Player
             html.Div([
-                html.Div('Select Team', className='three columns'),
+                html.Div('Select Player', className='three columns'),
                 html.Div(dcc.Dropdown(id='team-selector'), className='nine columns')
             ]),
         ], className='six columns'),
@@ -225,22 +209,22 @@ app.layout = html.Div([
 # Interaction Between Components / Controller
 #############################################
 
-# Load Seasons
+# Load Years
 @app.callback(
     Output(component_id='season-selector', component_property='options'),
     [
         Input(component_id='division-selector', component_property='value')
     ]
 )
-def populate_season_selector(division):
-    seasons = get_seasons(division)
+def populate_year_selector(league):
+    years = get_year(league)
     return [
-        {'label': season, 'value': season}
-        for season in seasons
+        {'label': year, 'value': year}
+        for year in years
     ]
 
 
-# Load Team
+# Load Player
 @app.callback(
     Output(component_id='team-selector', component_property='options'),
     [
@@ -248,11 +232,11 @@ def populate_season_selector(division):
         Input(component_id='season-selector', component_property='value'),
     ]
 )
-def populate_team_selector(division, season):
-    teams = get_teams(division, season)
+def populate_player_selector(league, year):
+    players = get_players(league, year)
     return [
-        {'label': team, 'value': team}
-        for team in teams
+        {'label': player, 'value': player}
+        for player in players
     ]
 
 
@@ -265,8 +249,8 @@ def populate_team_selector(division, season):
         Input(component_id='team-selector', component_property='value')
     ]
 )
-def load_match_results(division, season, team):
-    results = get_match_results(division, season, team)
+def load_match_results(league, year, player):
+    results = get_match_results(league, year, player)
     return generate_table(results, max_rows=50)
 
 
@@ -279,11 +263,11 @@ def load_match_results(division, season, team):
         Input(component_id='team-selector', component_property='value')
     ]
 )
-def load_season_summary(division, season, team):
-    results = get_match_results(division, season, team)
+def load_season_summary(league, year, player):
+    results = get_match_results(league, year, player)
     table = []
     if len(results) > 0:
-        summary = calculate_season_summary(results)
+        summary = calculate_year_summary(results)
         table = ff.create_table(summary)
 
     return table
@@ -298,12 +282,12 @@ def load_season_summary(division, season, team):
         Input(component_id='team-selector', component_property='value')
     ]
 )
-def load_season_point_graph(division, season, team):
-    results = get_match_results(division, season, team)
+def load_season_point_graph(league, year, player):
+    results = get_match_results(league, year, player)
 
     figure = []
     if len(results) > 0:
-        figure = draw_season_points_graph(results)
+        figure = draw_year_points_graph(results)
 
     return figure
 
