@@ -25,7 +25,7 @@ conn = create_engine(os.environ['DB_URI'])
 def fetch_data(q):
     result = pd.read_sql(
         sql=q,
-        con=sqlite3.connect('soccer-stats.db?raw=true')
+        con=sqlite3.connect('tabletennis_stat')
     )
     return result
 
@@ -40,50 +40,50 @@ def fetch_data(q):
 def get_league():
     league_query = (
         """
-        SELECT DISTINCT division
+        SELECT DISTINCT League
         FROM results
         """
     )
     leagues = fetch_data(league_query)
-    leagues = list(leagues['division'].sort_values(ascending=True))
+    leagues = list(leagues['League'].sort_values(ascending=True))
     return leagues
 
 
 def get_year(league):
     year_query = (
-        """SELECT DISTINCT season
+        """SELECT DISTINCT Year
         FROM results
-        WHERE division='{0}'
+        WHERE League='{0}'
         """.format(league)
     )
     years = fetch_data(year_query)
-    years = list(years['season'].sort_values(ascending=True))
+    years = list(years['Year'].sort_values(ascending=True))
     return years
 
 
 def get_players(league, year):
     players_query = (
         """
-        SELECT DISTINCT team
+        SELECT DISTINCT Player
         FROM results
-        WHERE division='{0}'
-        AND season='{1}'
+        WHERE League='{0}'
+        AND Year='{1}'
         """.format(league, year)
     )
 
     players = fetch_data(players_query)
-    players = list(players['team'].sort_values(ascending=True))
+    players = list(players['Player'].sort_values(ascending=True))
     return players
 
 
 def get_match_results(league, year, player):
     results_query = (
         """
-        SELECT date, team, opponent, goals, goals_opp, result, points
+        SELECT Date, Player, Opponent, Player_games, Opponent_games, Player_result
         FROM results
-        WHERE division='{0}'
-        AND season='{1}'
-        AND team='{2}'
+        WHERE League='{0}'
+        AND Year='{1}'
+        AND Player='{2}'
         ORDER BY date ASC
         """.format(league, year, player)
     )
@@ -92,34 +92,33 @@ def get_match_results(league, year, player):
 
 
 def calculate_year_summary(results):
-    record = results.groupby(by=['result'])['team'].count()
+    record = results.groupby(by=['Player_result'])['Player'].count()
     summary = pd.DataFrame(
         data={
+            'Plays': record['W']+record['L'],
             'W': record['W'],
-            'L': record['L'],
-            'D': record['D'],
-            'Points': results['points'].sum()
+            'L': record['L']
         },
-        columns=['W', 'L', 'D', 'Points'],
-        index=results['team'].unique(),
+        columns=['Plays', 'W', 'L'],
+        index=results['Player'].unique(),
     )
     return summary
 
 
-def draw_year_points_graph(results):
-    dates = results['date']
-    points = results['points'].cumsum()
-
-    figure = go.Figure(
-        data=[
-            go.Scatter(x=dates, y=points, mode='lines+markets')
-        ],
-        layout=go.Layout(
-            title='Points Accumulation',
-            showlegend=False
-        )
-    )
-    return figure
+# def draw_year_points_graph(results):
+#     dates = results['Date']
+#     points = results['points'].cumsum()
+#
+#     figure = go.Figure(
+#         data=[
+#             go.Scatter(x=dates, y=points, mode='lines+markets')
+#         ],
+#         layout=go.Layout(
+#             title='Points Accumulation',
+#             showlegend=False
+#         )
+#     )
+#     return figure
 
 #########################
 # Dashboard Layout / View
@@ -274,22 +273,22 @@ def load_season_summary(league, year, player):
 
 
 # Update Season Point Graph
-@app.callback(
-    Output(component_id='season-graph', component_property='figure'),
-    [
-        Input(component_id='division-selector', component_property='value'),
-        Input(component_id='season-selector', component_property='value'),
-        Input(component_id='team-selector', component_property='value')
-    ]
-)
-def load_season_point_graph(league, year, player):
-    results = get_match_results(league, year, player)
-
-    figure = []
-    if len(results) > 0:
-        figure = draw_year_points_graph(results)
-
-    return figure
+# @app.callback(
+#     Output(component_id='season-graph', component_property='figure'),
+#     [
+#         Input(component_id='division-selector', component_property='value'),
+#         Input(component_id='season-selector', component_property='value'),
+#         Input(component_id='team-selector', component_property='value')
+#     ]
+# )
+# # def load_season_point_graph(league, year, player):
+#     results = get_match_results(league, year, player)
+#
+#     figure = []
+#     if len(results) > 0:
+#         figure = draw_year_points_graph(results)
+#
+#     return figure
 
 # start Flask server
 if __name__ == '__main__':
