@@ -76,7 +76,7 @@ def get_players(league, year):
     return players
 
 
-def get_match_results(league, year, player):
+def get_total_results(league, year, player):
     results_query = (
         """
         SELECT Date, Player, Opponent, Player_games, Opponent_games, Player_result
@@ -91,7 +91,7 @@ def get_match_results(league, year, player):
     return match_results
 
 
-def calculate_year_summary(results):
+def calculate_player_results(results):
     record = results.groupby(by=['Player_result'])['Player'].count()
     summary = pd.DataFrame(
         data={
@@ -162,20 +162,20 @@ app.layout = html.Div([
             # Select League
             html.Div([
                 html.Div('Select League', className='three columns'),
-                html.Div(dcc.Dropdown(id='division-selector', options=onLoad_league_options()),
+                html.Div(dcc.Dropdown(id='league-selector', options=onLoad_league_options()),
                          className='nine columns')
             ]),
 
             # Select Year
             html.Div([
                 html.Div('Select Year', className='three columns'),
-                html.Div(dcc.Dropdown(id='season-selector'), className='nine columns')
+                html.Div(dcc.Dropdown(id='year-selector'), className='nine columns')
             ]),
 
             # Select Player
             html.Div([
                 html.Div('Select Player', className='three columns'),
-                html.Div(dcc.Dropdown(id='team-selector'), className='nine columns')
+                html.Div(dcc.Dropdown(id='player-selector'), className='nine columns')
             ]),
         ], className='six columns'),
 
@@ -183,23 +183,23 @@ app.layout = html.Div([
         html.Div(className='six columns'),
     ], className='twelve columns'),
 
-    # Match results Grid
+    # Total results Grid
     html.Div([
-        # Match Results Table
+        # Total Results Table
         html.Div(
-            html.Table(id='match-results'),
-            className='six columns'
+            html.Table(id='total-results'),
+            className='nine columns'
         ),
 
-        # Season Summary Table and Graph
+        # Player Results Table and Graph
         html.Div([
-            # summary table
-            dcc.Graph(id='season-summary'),
+            # results table
+            dcc.Graph(id='player-results'),
 
             # graph
-            dcc.Graph(id='season-graph')
+            dcc.Graph(id='player-results-graph')
             # style = {},
-        ], className='six columns')
+        ], className='three columns')
     ]),
 ])
 
@@ -210,9 +210,9 @@ app.layout = html.Div([
 
 # Load Years
 @app.callback(
-    Output(component_id='season-selector', component_property='options'),
+    Output(component_id='year-selector', component_property='options'),
     [
-        Input(component_id='division-selector', component_property='value')
+        Input(component_id='league-selector', component_property='value')
     ]
 )
 def populate_year_selector(league):
@@ -225,10 +225,10 @@ def populate_year_selector(league):
 
 # Load Player
 @app.callback(
-    Output(component_id='team-selector', component_property='options'),
+    Output(component_id='player-selector', component_property='options'),
     [
-        Input(component_id='division-selector', component_property='value'),
-        Input(component_id='season-selector', component_property='value'),
+        Input(component_id='league-selector', component_property='value'),
+        Input(component_id='year-selector', component_property='value'),
     ]
 )
 def populate_player_selector(league, year):
@@ -239,34 +239,34 @@ def populate_player_selector(league, year):
     ]
 
 
-# Load Match Results
+# Load Total Results
 @app.callback(
-    Output(component_id='match-results', component_property='children'),
+    Output(component_id='total-results', component_property='children'),
     [
-        Input(component_id='division-selector', component_property='value'),
-        Input(component_id='season-selector', component_property='value'),
-        Input(component_id='team-selector', component_property='value')
+        Input(component_id='league-selector', component_property='value'),
+        Input(component_id='year-selector', component_property='value'),
+        Input(component_id='player-selector', component_property='value')
     ]
 )
-def load_match_results(league, year, player):
-    results = get_match_results(league, year, player)
+def load_total_results(league, year, player):
+    results = get_total_results(league, year, player)
     return generate_table(results, max_rows=50)
 
 
-# Update Season Summary Table
+# Update Player Results Table
 @app.callback(
-    Output(component_id='season-summary', component_property='figure'),
+    Output(component_id='player-results', component_property='figure'),
     [
-        Input(component_id='division-selector', component_property='value'),
-        Input(component_id='season-selector', component_property='value'),
-        Input(component_id='team-selector', component_property='value')
+        Input(component_id='league-selector', component_property='value'),
+        Input(component_id='year-selector', component_property='value'),
+        Input(component_id='player-selector', component_property='value')
     ]
 )
-def load_season_summary(league, year, player):
-    results = get_match_results(league, year, player)
+def load_player_results(league, year, player):
+    results = get_total_results(league, year, player)
     table = []
     if len(results) > 0:
-        summary = calculate_year_summary(results)
+        summary = calculate_player_results(results)
         table = ff.create_table(summary)
 
     return table
