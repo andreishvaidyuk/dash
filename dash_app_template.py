@@ -3,11 +3,12 @@ import os
 
 # dash libs
 import dash
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.figure_factory as ff
 import plotly.graph_objs as go
+import dash_table_experiments as dt
 
 # pydata stack
 import pandas as pd
@@ -17,7 +18,10 @@ from sqlalchemy import create_engine
 import sqlite3
 conn = create_engine(os.environ['DB_URI'])
 
-
+result = pd.read_sql(
+        sql="select Date, Player, Opponent, Player_games, Opponent_games, Player_result from results",
+        con=sqlite3.connect('tabletennis_stat')
+    )
 #######################
 # Data Analysis / Model
 #######################
@@ -28,13 +32,6 @@ def fetch_data(q):
         con=sqlite3.connect('tabletennis_stat')
     )
     return result
-
-    #con = sqlite3.connect('soccer-stats.db?raw=true')
-    #cur = con.cursor()
-    #cur.execute("SELECT DISTINCT division FROM results")
-    #data = cur.fetchall()
-    #con.close()
-    #return data
 
 
 def get_league():
@@ -87,8 +84,8 @@ def get_total_results(league, year, player):
         ORDER BY date ASC
         """.format(league, year, player)
     )
-    match_results = fetch_data(results_query)
-    return match_results
+    total_results = fetch_data(results_query)
+    return total_results
 
 
 def calculate_player_results(results):
@@ -138,7 +135,7 @@ def generate_table(dataframe, max_rows=10):
 
 def onLoad_league_options():
     league_options = (
-        [{'table': league, 'value': league}
+        [{'label': league, 'value': league}
          for league in get_league()]
     )
     return league_options
@@ -153,7 +150,7 @@ app.css.append_css({
 app.layout = html.Div([
     # Page Header
     html.Div([
-        html.H1('Tabletennis results Viewer')
+         html.H1('Tabletennis results Viewer')
     ]),
 
     # dropdown Grid
@@ -183,26 +180,39 @@ app.layout = html.Div([
         html.Div(className='six columns'),
     ], className='twelve columns'),
 
-    # Total results Grid
     html.Div([
         # Total Results Table
         html.Div(
-            html.Table(id='total-results'),
-            className='nine columns'
+            dt.DataTable(
+                rows=[{}], #result.to_dict('records'),
+
+                # optional - sets the order of columns
+                columns=sorted(result.columns),
+
+                row_selectable=True,
+                filterable=True,
+                sortable=True,
+                selected_row_indices=[],
+                id='result-table'
+            ),
         ),
 
-        # Player Results Table and Graph
         html.Div([
-            # results table
-            dcc.Graph(id='player-results'),
-
-            # graph
-            dcc.Graph(id='player-results-graph')
-            # style = {},
-        ], className='three columns')
+            # Player Results Table and Graph
+            html.Div([
+                html.Div(id='selected-indexes'),
+                # results table
+                dcc.Graph(
+                    id='player-results'
+                ),
+                # graph
+                # dcc.Graph(id='player-results-graph')
+                # style = {},
+                #, className='three columns')
+            ], className='three columns')
+        ]),
     ]),
 ])
-
 
 #############################################
 # Interaction Between Components / Controller
@@ -222,7 +232,6 @@ def populate_year_selector(league):
         for year in years
     ]
 
-
 # Load Player
 @app.callback(
     Output(component_id='player-selector', component_property='options'),
@@ -239,18 +248,19 @@ def populate_player_selector(league, year):
     ]
 
 
-# Load Total Results
+# # Load Total Results
 @app.callback(
-    Output(component_id='total-results', component_property='children'),
+    Output('result-table', 'selected_row_indices'),
     [
         Input(component_id='league-selector', component_property='value'),
         Input(component_id='year-selector', component_property='value'),
         Input(component_id='player-selector', component_property='value')
-    ]
-)
-def load_total_results(league, year, player):
+    ],
+    [State('result-table', 'selected_row_indices')])
+def update_selected_row_indices(league, year, player):
     results = get_total_results(league, year, player)
     return generate_table(results, max_rows=50)
+    # return selected_row_indices
 
 
 # Update Player Results Table
