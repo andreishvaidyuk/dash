@@ -10,6 +10,7 @@ import plotly.figure_factory as ff
 import plotly.graph_objs as go
 import dash_table_experiments as dt
 
+
 # pydata stack
 import pandas as pd
 from sqlalchemy import create_engine
@@ -18,10 +19,6 @@ from sqlalchemy import create_engine
 import sqlite3
 conn = create_engine(os.environ['DB_URI'])
 
-result = pd.read_sql(
-        sql="select Date, Player, Opponent, Player_games, Opponent_games, Player_result from results",
-        con=sqlite3.connect('tabletennis_stat')
-    )
 #######################
 # Data Analysis / Model
 #######################
@@ -121,18 +118,6 @@ def calculate_player_results(results):
 # Dashboard Layout / View
 #########################
 
-def generate_table(dataframe, max_rows=10):
-    return html.Table(
-        # Header
-        [html.Tr([html.Th(col) for col in dataframe.columns])] +
-
-        # Body
-        [html.Tr([
-            html.Td(dataframe.iloc[i][col]) for col in dataframe.columns
-        ])for i in range(min(len(dataframe), max_rows))]
-    )
-
-
 def onLoad_league_options():
     league_options = (
         [{'label': league, 'value': league}
@@ -150,7 +135,7 @@ app.css.append_css({
 app.layout = html.Div([
     # Page Header
     html.Div([
-         html.H1('Tabletennis results Viewer')
+         html.H1('Tabletennis results')
     ]),
 
     # dropdown Grid
@@ -180,15 +165,11 @@ app.layout = html.Div([
         html.Div(className='six columns'),
     ], className='twelve columns'),
 
+    # Total Results Table
     html.Div([
-        # Total Results Table
         html.Div(
             dt.DataTable(
-                rows=[{}], #result.to_dict('records'),
-
-                # optional - sets the order of columns
-                columns=sorted(result.columns),
-
+                rows=[{}],
                 row_selectable=True,
                 filterable=True,
                 sortable=True,
@@ -200,15 +181,13 @@ app.layout = html.Div([
         html.Div([
             # Player Results Table and Graph
             html.Div([
-                html.Div(id='selected-indexes'),
+
                 # results table
-                dcc.Graph(
-                    id='player-results'
-                ),
+                dcc.Graph(id='player-results'),
+
                 # graph
-                # dcc.Graph(id='player-results-graph')
-                # style = {},
-                #, className='three columns')
+                dcc.Graph(id='player-results-graph')
+
             ], className='three columns')
         ]),
     ]),
@@ -250,17 +229,16 @@ def populate_player_selector(league, year):
 
 # # Load Total Results
 @app.callback(
-    Output('result-table', 'selected_row_indices'),
+    Output(component_id='result-table', component_property='rows'),
     [
         Input(component_id='league-selector', component_property='value'),
         Input(component_id='year-selector', component_property='value'),
         Input(component_id='player-selector', component_property='value')
-    ],
-    [State('result-table', 'selected_row_indices')])
-def update_selected_row_indices(league, year, player):
+    ]
+)
+def load_total_results(league, year, player):
     results = get_total_results(league, year, player)
-    return generate_table(results, max_rows=50)
-    # return selected_row_indices
+    return results.to_dict('records')
 
 
 # Update Player Results Table
@@ -278,17 +256,16 @@ def load_player_results(league, year, player):
     if len(results) > 0:
         summary = calculate_player_results(results)
         table = ff.create_table(summary)
-
     return table
 
 
-# Update Season Point Graph
+# Update Player Results Graph
 # @app.callback(
-#     Output(component_id='season-graph', component_property='figure'),
+#     Output(component_id='player-results-graph', component_property='figure'),
 #     [
-#         Input(component_id='division-selector', component_property='value'),
-#         Input(component_id='season-selector', component_property='value'),
-#         Input(component_id='team-selector', component_property='value')
+#         Input(component_id='league-selector', component_property='value'),
+#         Input(component_id='year-selector', component_property='value'),
+#         Input(component_id='player-selector', component_property='value')
 #     ]
 # )
 # # def load_season_point_graph(league, year, player):
