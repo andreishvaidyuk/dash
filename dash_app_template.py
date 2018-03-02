@@ -9,6 +9,7 @@ import dash_html_components as html
 import plotly.figure_factory as ff
 import plotly.graph_objs as go
 import dash_table_experiments as dt
+import plotly
 
 
 # pydata stack
@@ -73,7 +74,7 @@ def get_players(league, year):
 def get_total_results(league, year, player):
     results_query = (
         """
-        SELECT Date, Player, Opponent, Player_games, Opponent_games, Player_result
+        SELECT Date, Opponent, Player_games, Opponent_games, Player_result
         FROM results
         WHERE League='{0}'
         AND Year='{1}'
@@ -85,34 +86,20 @@ def get_total_results(league, year, player):
     return total_results
 
 
-def calculate_player_results(results):
-    record = results.groupby(by=['Player_result'])['Player'].count()
-    summary = pd.DataFrame(
-        data={
-            'Plays': record['W']+record['L'],
-            'W': record['W'],
-            'L': record['L']
-        },
-        columns=['Plays', 'W', 'L'],
-        index=results['Player'].unique(),
+def draw_year_points_graph(results):
+    dates = results['Date']
+    df = pd.DataFrame(results)
+    points = df[(df.Player_result == 'W')].count()
+    figure = go.Figure(
+        data=[
+            go.Scatter(x=dates, y=points, mode='markets')
+        ],
+        layout=go.Layout(
+            title='Wins',
+            showlegend=False
+        )
     )
-    return summary
-
-
-# def draw_year_points_graph(results):
-#     dates = results['Date']
-#     points = results['points'].cumsum()
-#
-#     figure = go.Figure(
-#         data=[
-#             go.Scatter(x=dates, y=points, mode='lines+markets')
-#         ],
-#         layout=go.Layout(
-#             title='Points Accumulation',
-#             showlegend=False
-#         )
-#     )
-#     return figure
+    return figure
 
 #########################
 # Dashboard Layout / View
@@ -165,12 +152,11 @@ app.layout = html.Div([
         html.Div(className='six columns'),
     ], className='twelve columns'),
 
-    # Total Results Table
     html.Div([
+        # Total Results Table
         html.Div(
             dt.DataTable(
                 rows=[{}],
-                row_selectable=True,
                 filterable=True,
                 sortable=True,
                 selected_row_indices=[],
@@ -178,18 +164,10 @@ app.layout = html.Div([
             ),
         ),
 
+        # Player Results Graph
         html.Div([
-            # Player Results Table and Graph
-            html.Div([
-
-                # results table
-                dcc.Graph(id='player-results'),
-
-                # graph
-                dcc.Graph(id='player-results-graph')
-
-            ], className='three columns')
-        ]),
+            dcc.Graph(id='player-results-graph')
+        ], className='three columns')
     ]),
 ])
 
@@ -241,41 +219,24 @@ def load_total_results(league, year, player):
     return results.to_dict('records')
 
 
-# Update Player Results Table
+# Update Player Results Graph
 @app.callback(
-    Output(component_id='player-results', component_property='figure'),
+    Output(component_id='player-results-graph', component_property='figure'),
     [
         Input(component_id='league-selector', component_property='value'),
         Input(component_id='year-selector', component_property='value'),
         Input(component_id='player-selector', component_property='value')
     ]
 )
-def load_player_results(league, year, player):
+def load_season_point_graph(league, year, player):
     results = get_total_results(league, year, player)
-    table = []
+
+    figure = []
     if len(results) > 0:
-        summary = calculate_player_results(results)
-        table = ff.create_table(summary)
-    return table
+        figure = draw_year_points_graph(results)
 
+    return figure
 
-# Update Player Results Graph
-# @app.callback(
-#     Output(component_id='player-results-graph', component_property='figure'),
-#     [
-#         Input(component_id='league-selector', component_property='value'),
-#         Input(component_id='year-selector', component_property='value'),
-#         Input(component_id='player-selector', component_property='value')
-#     ]
-# )
-# # def load_season_point_graph(league, year, player):
-#     results = get_match_results(league, year, player)
-#
-#     figure = []
-#     if len(results) > 0:
-#         figure = draw_year_points_graph(results)
-#
-#     return figure
 
 # start Flask server
 if __name__ == '__main__':
