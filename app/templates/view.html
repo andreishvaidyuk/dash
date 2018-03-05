@@ -1,0 +1,69 @@
+#########################
+# Dashboard Layout / View
+#########################
+
+def onLoad_league_options():
+    league_options = (
+        [{'label': league, 'value': league}
+         for league in get_league()]
+    )
+    return league_options
+
+
+# Set up dashboard and create Layout
+app = dash.Dash()
+app.css.append_css({
+    "external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
+})
+
+app.layout = html.Div([
+    # Page Header
+    html.Div([
+         html.H1('Tabletennis results')
+    ]),
+
+    # dropdown Grid
+    html.Div([
+        html.Div([
+            # Select League
+            html.Div([
+                html.Div('Select League', className='three columns'),
+                html.Div(dcc.Dropdown(id='league-selector', options=onLoad_league_options()),
+                         className='nine columns')
+            ]),
+
+            # Select Year
+            html.Div([
+                html.Div('Select Year', className='three columns'),
+                html.Div(dcc.Dropdown(id='year-selector'), className='nine columns')
+            ]),
+
+            # Select Player
+            html.Div([
+                html.Div('Select Player', className='three columns'),
+                html.Div(dcc.Dropdown(id='player-selector'), className='nine columns')
+            ]),
+        ], className='six columns'),
+
+        # Empty
+        html.Div(className='six columns'),
+    ], className='twelve columns'),
+
+    html.Div([
+        # Total Results Table
+        html.Div(
+            dt.DataTable(
+                rows=[{}],
+                filterable=True,
+                sortable=True,
+                selected_row_indices=[],
+                id='result-table'
+            ),
+        ),
+
+        # Player Results Graph
+        html.Div([
+            dcc.Graph(id='player-results-graph')
+        ], className='three columns')
+    ]),
+])

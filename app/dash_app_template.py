@@ -116,7 +116,7 @@ def onLoad_league_options():
 # Set up dashboard and create Layout
 app = dash.Dash()
 app.css.append_css({
-    "external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
+    "external_url": '/static/style.css'
 })
 
 app.layout = html.Div([
