@@ -3,14 +3,10 @@ import os
 
 # dash libs
 import dash
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
-import plotly.figure_factory as ff
-import plotly.graph_objs as go
 import dash_table_experiments as dt
-import plotly
-
 
 # pydata stack
 import pandas as pd
@@ -74,7 +70,8 @@ def get_players(league, year):
 def get_total_results(league, year, player):
     results_query = (
         """
-        SELECT Date, Opponent, Player_games, Opponent_games, Player_result
+        SELECT Date AS Дата, Opponent Соперник, Player_games Игры_игрока,
+              Opponent_games Игры_соперника, Player_result Результат_игрока
         FROM results
         WHERE League='{0}'
         AND Year='{1}'
@@ -85,21 +82,6 @@ def get_total_results(league, year, player):
     total_results = fetch_data(results_query)
     return total_results
 
-
-def draw_year_points_graph(results):
-    dates = results['Date']
-    df = pd.DataFrame(results)
-    points = df[(df.Player_result == 'W')].count()
-    figure = go.Figure(
-        data=[
-            go.Scatter(x=dates, y=points, mode='markets')
-        ],
-        layout=go.Layout(
-            title='Wins',
-            showlegend=False
-        )
-    )
-    return figure
 
 #########################
 # Dashboard Layout / View
@@ -116,13 +98,13 @@ def onLoad_league_options():
 # Set up dashboard and create Layout
 app = dash.Dash()
 app.css.append_css({
-    "external_url": '/static/style.css'
+    "external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
 })
 
 app.layout = html.Div([
     # Page Header
     html.Div([
-         html.H1('Tabletennis results')
+         html.H2('Результаты соревнований по настольному теннису')
     ]),
 
     # dropdown Grid
@@ -130,21 +112,21 @@ app.layout = html.Div([
         html.Div([
             # Select League
             html.Div([
-                html.Div('Select League', className='three columns'),
+                html.Div('Выберите лигу', className='four columns'),
                 html.Div(dcc.Dropdown(id='league-selector', options=onLoad_league_options()),
-                         className='nine columns')
+                         className='eight columns')
             ]),
 
             # Select Year
             html.Div([
-                html.Div('Select Year', className='three columns'),
-                html.Div(dcc.Dropdown(id='year-selector'), className='nine columns')
+                html.Div('Выберите год', className='four columns'),
+                html.Div(dcc.Dropdown(id='year-selector'), className='eight columns')
             ]),
 
             # Select Player
             html.Div([
-                html.Div('Select Player', className='three columns'),
-                html.Div(dcc.Dropdown(id='player-selector'), className='nine columns')
+                html.Div('Выберите игрока', className='four columns'),
+                html.Div(dcc.Dropdown(id='player-selector'), className='eight columns')
             ]),
         ], className='six columns'),
 
@@ -157,17 +139,13 @@ app.layout = html.Div([
         html.Div(
             dt.DataTable(
                 rows=[{}],
+                # columns=sorted(["Date", "Opponent", "Player_games", "Opponent_games", "Player_result"]),
                 filterable=True,
                 sortable=True,
                 selected_row_indices=[],
                 id='result-table'
             ),
         ),
-
-        # Player Results Graph
-        html.Div([
-            dcc.Graph(id='player-results-graph')
-        ], className='three columns')
     ]),
 ])
 
@@ -217,25 +195,6 @@ def populate_player_selector(league, year):
 def load_total_results(league, year, player):
     results = get_total_results(league, year, player)
     return results.to_dict('records')
-
-
-# Update Player Results Graph
-@app.callback(
-    Output(component_id='player-results-graph', component_property='figure'),
-    [
-        Input(component_id='league-selector', component_property='value'),
-        Input(component_id='year-selector', component_property='value'),
-        Input(component_id='player-selector', component_property='value')
-    ]
-)
-def load_season_point_graph(league, year, player):
-    results = get_total_results(league, year, player)
-
-    figure = []
-    if len(results) > 0:
-        figure = draw_year_points_graph(results)
-
-    return figure
 
 
 # start Flask server
