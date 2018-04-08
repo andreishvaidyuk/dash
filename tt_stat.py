@@ -14,7 +14,7 @@ from sqlalchemy import create_engine
 
 # set params
 import sqlite3
-conn = create_engine(os.environ['DB_URI'])
+# conn = create_engine(os.environ['DB_URI'])
 
 #######################
 # Data Analysis / Model
@@ -202,5 +202,5 @@ if __name__ == '__main__':
     app.run_server(
         debug=True,
         host='0.0.0.0',
-        port=8050
+        port=1234
     )
